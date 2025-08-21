@@ -1,4 +1,3 @@
-When I logged out from the administrator profile, this came up — shouldn’t it be redirected to the homepage?
 Regarding the player search feature, we believe it’s necessary to add a function that allows players to enable or disable the option to be found in the database, for privacy reasons.
 In other words, from their profile they should be able to toggle a button that says “Can Be Found” / “Not Visible”, along with a note or explanation stating that if they activate this button, they will not appear in the player search results.
 This is intended for cases where, for example, some people do not wish to be found by other players and prefer to keep their personal information restricted.For those who do wish to be visible, we could make it so that in the player search results, a simplified list of information is displayed so other players can contact them.
