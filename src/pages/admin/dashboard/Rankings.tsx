@@ -1,23 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../../store';
+import { 
+  fetchRankingIssues, 
+  approveRankingIssue, 
+  rejectRankingIssue,
+  fetchRankingStats,
+  exportRankingsReport,
+  setSelectedIssue,
+  clearSelectedIssue
+} from '../../../store/slices/rankingsSlice';
+import { AppDispatch } from '../../../store';
 
 interface RankingIssue {
-  id: number;
-  player: string;
-  currentRank: number;
-  requestedRank: number;
+  id: string;
+  player_id: string;
+  player_name: string;
+  player_email: string;
+  current_rank: number;
+  requested_rank: number;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
-  submitted: string;
+  submitted_at: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  review_notes?: string;
 }
 
 interface RankingsProps {
-  rankingIssues: RankingIssue[];
+  rankingIssues?: RankingIssue[];
 }
 
-const Rankings: React.FC<RankingsProps> = ({ rankingIssues }) => {
+const Rankings: React.FC<RankingsProps> = ({ rankingIssues: propRankingIssues }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { 
+    rankingIssues, 
+    selectedIssue, 
+    loading, 
+    error, 
+    stats 
+  } = useSelector((state: RootState) => state.adminRankings);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedIssue, setSelectedIssue] = useState<RankingIssue | null>(null);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [newRank, setNewRank] = useState<number | ''>('');
+
+  // Use prop ranking issues if provided, otherwise use Redux state
+  const displayRankingIssues = propRankingIssues || rankingIssues;
+
+  useEffect(() => {
+    if (!propRankingIssues) {
+      dispatch(fetchRankingIssues({}));
+      dispatch(fetchRankingStats());
+    }
+  }, [dispatch, propRankingIssues]);
+
+  // Calculate stats from ranking issues if not available from Redux
+  const calculatedStats = stats || {
+    total: displayRankingIssues.length,
+    pending: displayRankingIssues.filter(i => i.status === 'pending').length,
+    approved: displayRankingIssues.filter(i => i.status === 'approved').length,
+    rejected: displayRankingIssues.filter(i => i.status === 'rejected').length
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -53,30 +98,35 @@ const Rankings: React.FC<RankingsProps> = ({ rankingIssues }) => {
     }
   };
 
-  const handleRankingAction = (issueId: number, action: 'approve' | 'reject') => {
-    // Handle ranking approval/rejection logic
-    console.log(`Ranking ${action} for issue ${issueId}`);
+  const handleRankingAction = (issueId: string, action: 'approve' | 'reject') => {
+    if (action === 'approve') {
+      dispatch(approveRankingIssue({ 
+        id: issueId, 
+        newRank: selectedIssue?.requested_rank || 0,
+        notes: 'Approved by admin'
+      }));
+    } else {
+      dispatch(rejectRankingIssue({ 
+        id: issueId, 
+        notes: 'Rejected by admin'
+      }));
+    }
   };
 
   const generateCSVReport = () => {
-    // Generate CSV report logic
-    console.log('Generating CSV report for rankings');
+    dispatch(exportRankingsReport({ format: 'csv' }));
   };
 
-  const filteredIssues = rankingIssues.filter(issue => {
-    const matchesSearch = issue.player.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredIssues = displayRankingIssues.filter(issue => {
+    const matchesSearch = issue.player_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          issue.reason.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || issue.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
 
-  const stats = {
-    total: rankingIssues.length,
-    pending: rankingIssues.filter(i => i.status === 'pending').length,
-    approved: rankingIssues.filter(i => i.status === 'approved').length,
-    rejected: rankingIssues.filter(i => i.status === 'rejected').length
-  };
+  // Use calculated stats instead of local stats
+  const displayStats = calculatedStats;
 
   return (
     <div className="space-y-6">
@@ -229,12 +279,12 @@ const Rankings: React.FC<RankingsProps> = ({ rankingIssues }) => {
               <tbody>
                 {filteredIssues.map((issue) => (
                   <tr key={issue.id} className="border-b border-gray-100 hover:bg-gray-50 animate-on-scroll">
-                    <td className="py-3 px-4 font-medium animate-on-scroll">{issue.player}</td>
+                    <td className="py-3 px-4 font-medium animate-on-scroll">{issue.player_name}</td>
                     <td className="py-3 px-4">
-                      <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-md animate-on-scroll">#{issue.currentRank}</span>
+                      <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-md animate-on-scroll">#{issue.current_rank}</span>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-md animate-on-scroll">#{issue.requestedRank}</span>
+                      <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-md animate-on-scroll">#{issue.requested_rank}</span>
                     </td>
                     <td className="py-3 px-4 max-w-xs truncate" title={issue.reason}>
                       <span className="animate-on-scroll">{issue.reason}</span>
@@ -247,12 +297,12 @@ const Rankings: React.FC<RankingsProps> = ({ rankingIssues }) => {
                         </div>
                       </span>
                     </td>
-                    <td className="py-3 px-4 animate-on-scroll">{issue.submitted}</td>
+                    <td className="py-3 px-4 animate-on-scroll">{issue.submitted_at}</td>
                     <td className="py-3 px-4">
                       <div className="flex space-x-2">
                         <button
                           className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors animate-on-scroll"
-                          onClick={() => setSelectedIssue(issue)}
+                          onClick={() => dispatch(setSelectedIssue(issue))}
                         >
                           <svg className="h-4 w-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -310,7 +360,7 @@ const Rankings: React.FC<RankingsProps> = ({ rankingIssues }) => {
               <h3 className="text-lg font-semibold animate-on-scroll">Ranking Request Details</h3>
               <button 
                 className="p-1 hover:bg-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 animate-on-scroll"
-                onClick={() => setSelectedIssue(null)}
+                onClick={() => dispatch(clearSelectedIssue())}
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -322,22 +372,22 @@ const Rankings: React.FC<RankingsProps> = ({ rankingIssues }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500 animate-on-scroll">Player</label>
-                  <p className="font-medium animate-on-scroll">{selectedIssue.player}</p>
+                  <p className="font-medium animate-on-scroll">{selectedIssue.player_name}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 animate-on-scroll">Submitted</label>
-                  <p className="animate-on-scroll">{selectedIssue.submitted}</p>
+                  <p className="animate-on-scroll">{selectedIssue.submitted_at}</p>
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500 animate-on-scroll">Current Rank</label>
-                  <span className="inline-block px-3 py-1 text-lg bg-gray-100 text-gray-800 border border-gray-300 rounded-md animate-on-scroll">#{selectedIssue.currentRank}</span>
+                  <span className="inline-block px-3 py-1 text-lg bg-gray-100 text-gray-800 border border-gray-300 rounded-md animate-on-scroll">#{selectedIssue.current_rank}</span>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 animate-on-scroll">Requested Rank</label>
-                  <span className="inline-block px-3 py-1 text-lg bg-gray-100 text-gray-800 border border-gray-300 rounded-md animate-on-scroll">#{selectedIssue.requestedRank}</span>
+                  <span className="inline-block px-3 py-1 text-lg bg-gray-100 text-gray-800 border border-gray-300 rounded-md animate-on-scroll">#{selectedIssue.requested_rank}</span>
                 </div>
               </div>
               
@@ -361,7 +411,7 @@ const Rankings: React.FC<RankingsProps> = ({ rankingIssues }) => {
               <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
                 <button 
                   className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors animate-on-scroll"
-                  onClick={() => setSelectedIssue(null)}
+                  onClick={() => dispatch(clearSelectedIssue())}
                 >
                   Close
                 </button>
@@ -370,7 +420,7 @@ const Rankings: React.FC<RankingsProps> = ({ rankingIssues }) => {
                   onClick={() => handleRankingAction(selectedIssue.id, 'reject')}
                 >
                   <svg className="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   Reject Request
                 </button>

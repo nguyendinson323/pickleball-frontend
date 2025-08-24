@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
-import { fetchRankings, fetchTopPlayers } from '../../store/slices/rankingsSlice';
+
 import { Ranking } from '../../types/api';
 
 const RankingsPage = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { rankings, topPlayers, loading, error, pagination } = useSelector((state: RootState) => state.rankings);
+  const { rankingIssues, loading, error, pagination } = useSelector((state: RootState) => state.rankings);
   
   const [filters, setFilters] = useState<{
     page: number;
@@ -24,15 +24,7 @@ const RankingsPage = () => {
     search: ''
   });
 
-  useEffect(() => {
-    const apiFilters = {
-      ...filters,
-      category: filters.category || undefined,
-      skill_level: filters.skill_level || undefined
-    } as any;
-    dispatch(fetchRankings(apiFilters));
-    dispatch(fetchTopPlayers({ limit: 10, category: filters.category || 'singles' }));
-  }, [dispatch, filters]);
+
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
@@ -103,7 +95,7 @@ const RankingsPage = () => {
     return `${percentage.toFixed(1)}%`;
   };
 
-  if (loading && rankings.length === 0) {
+      if (loading && rankingIssues.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center h-64">
@@ -185,61 +177,7 @@ const RankingsPage = () => {
         </div>
       </section>
 
-      {/* Top Players Section */}
-      <section className="py-12 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4 animate-on-scroll">
-              Top 10 Players
-            </h2>
-            <p className="text-gray-600 animate-on-scroll">
-              The highest-ranked players in {filters.category.replace('_', ' ')} category
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {topPlayers.map((player, index) => (
-              <div key={player.id}>
-                <div className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg hover:scale-105 transition-all duration-300 animate-on-scroll">
-                  <div className="p-6 text-center">
-                    <div className="flex justify-center mb-4">
-                      {getPositionIcon(index + 1)}
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900">
-                      {player.user_name}
-                    </h3>
-                    <p className="text-gray-600">
-                      {player.state || 'Unknown State'}
-                    </p>
-                  </div>
-                  <div className="px-6 pb-6 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Skill Level:</span>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSkillLevelColor(player.skill_level)}`}>
-                        {player.skill_level}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Points:</span>
-                      <span className="font-semibold text-blue-600">{player.current_points}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Win Rate:</span>
-                      <span className="font-semibold text-green-600">
-                        {formatWinPercentage(player.win_percentage)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Tournaments:</span>
-                      <span className="font-semibold">{player.tournaments_played}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* Rankings Table Section */}
       <section className="py-12">
@@ -250,7 +188,7 @@ const RankingsPage = () => {
             </div>
           )}
 
-          {rankings.length === 0 && !loading ? (
+                          {rankingIssues.length === 0 && !loading ? (
             <div className="text-center py-16">
               <div className="max-w-md mx-auto">
                 <svg className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-on-scroll" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -285,63 +223,58 @@ const RankingsPage = () => {
                           Skill Level
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Points
+                          Requested Rank
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Change
+                          Status
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Win Rate
+                          Submitted
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tournaments
-                        </th>
+
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {rankings.map((ranking, index) => (
+                      {rankingIssues.map((ranking, index) => (
                         <tr key={ranking.id} className="hover:bg-gray-50 transition-colors duration-200">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              {getPositionIcon(ranking.current_position)}
+                              <span className="text-lg font-bold text-blue-600">#{ranking.current_rank}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div>
                                 <div className="text-sm font-medium text-gray-900">
-                                  {ranking.user_name}
+                                  {ranking.player_name}
                                 </div>
                                 <div className="text-sm text-gray-500">
-                                  {ranking.state || 'Unknown State'}
+                                  {ranking.reason || 'No reason provided'}
                                 </div>
                               </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSkillLevelColor(ranking.skill_level)}`}>
-                              {ranking.skill_level}
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              N/A
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {ranking.current_points}
+                            {ranking.requested_rank} requested
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              {getPositionChange(ranking.current_position, ranking.previous_position)}
-                              {ranking.previous_position && (
-                                <span className="ml-2 text-sm text-gray-600">
-                                  {ranking.current_position < ranking.previous_position ? '+' : ''}
-                                  {ranking.previous_position - ranking.current_position}
-                                </span>
-                              )}
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                ranking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                ranking.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {ranking.status}
+                              </span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {formatWinPercentage(ranking.win_percentage)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {ranking.tournaments_played}
+                            {ranking.submitted_at}
                           </td>
                         </tr>
                       ))}

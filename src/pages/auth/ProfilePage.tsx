@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { updateUser } from '../../store/slices/usersSlice';
-import { fetchUserRankings } from '../../store/slices/rankingsSlice';
+
 import { toast } from 'sonner';
 
 const ProfilePage = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { userRankings } = useSelector((state: RootState) => state.rankings);
+
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<{
     first_name: string;
@@ -40,11 +40,7 @@ const ProfilePage = () => {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (user?.id) {
-      dispatch(fetchUserRankings(user.id));
-    }
-  }, [dispatch, user?.id]);
+
 
   const handleEditToggle = () => {
     if (isEditing) {
@@ -401,60 +397,7 @@ const ProfilePage = () => {
               </div>
 
               {/* Rankings Tab Content */}
-              <div className="space-y-6">
-                <div className="animate-on-scroll bg-white rounded-lg shadow-lg border border-gray-200">
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="animate-on-scroll text-lg font-semibold text-gray-900 flex items-center">
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                      </svg>
-                      My Rankings
-                    </h3>
-                    <p className="animate-on-scroll text-gray-600">
-                      Your current rankings across different categories
-                    </p>
-                  </div>
-                  <div className="px-6 py-4">
-                    {userRankings.length > 0 ? (
-                      <div className="space-y-4">
-                        {userRankings.map((ranking) => (
-                          <div key={ranking.id} className="animate-on-scroll flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow duration-300">
-                            <div className="flex items-center space-x-4">
-                              <div className="text-2xl font-bold text-blue-600">
-                                #{ranking.current_position}
-                              </div>
-                              <div>
-                                <div className="font-semibold">
-                                  {ranking.category.replace('_', ' ').toUpperCase()}
-                                </div>
-                                <div className="text-sm text-gray-600">
-                                  Level {ranking.skill_level}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-semibold">{ranking.current_points} points</div>
-                              <div className="text-sm text-gray-600">
-                                {ranking.win_percentage.toFixed(1)}% win rate
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                        </svg>
-                        <h3 className="animate-on-scroll text-lg font-semibold text-gray-900 mb-2">No rankings yet</h3>
-                        <p className="animate-on-scroll text-gray-600">
-                          Participate in tournaments to earn rankings and track your progress.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+
 
               {/* Statistics Tab Content */}
               <div className="space-y-6">

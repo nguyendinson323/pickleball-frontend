@@ -1,31 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '../../../store';
+import {
+  fetchAffiliations,
+  fetchAffiliationStats,
+  exportAffiliationsReport,
+  approveAffiliation,
+  rejectAffiliation,
+  suspendAffiliation,
+  reactivateAffiliation,
+  setSelectedAffiliation,
+  clearSelectedAffiliation,
+  Affiliation
+} from '../../../store/slices/affiliationsSlice';
 
-interface Affiliation {
-  id: number;
-  entityName: string;
-  entityType: 'club' | 'state' | 'partner';
-  status: 'active' | 'pending' | 'suspended' | 'expired';
-  region: string;
-  memberCount: number;
-  joinDate: string;
-  renewalDate: string;
-  complianceScore: number;
-  lastAudit: string;
-  contactPerson: string;
-  contactEmail: string;
-  benefits: string[];
-}
-
-interface AffiliationsProps {
-  affiliations: Affiliation[];
-}
-
-const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
+const Affiliations: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { affiliations, selectedAffiliation, loading, error, stats: reduxStats } = useSelector((state: RootState) => state.affiliations);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState('all');
-  const [selectedAffiliation, setSelectedAffiliation] = useState<Affiliation | null>(null);
+
+  // Fetch data on component mount
+  useEffect(() => {
+    dispatch(fetchAffiliations({}));
+    dispatch(fetchAffiliationStats());
+  }, [dispatch]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -83,33 +85,47 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
     return 'text-red-600';
   };
 
-  const handleAffiliationAction = (affiliationId: number, action: string) => {
-    // Handle affiliation actions
-    console.log(`Affiliation ${action} for ID ${affiliationId}`);
+  const handleAffiliationAction = (affiliationId: string, action: string) => {
+    switch (action) {
+      case 'approve':
+        dispatch(approveAffiliation({ id: affiliationId, notes: 'Approved by admin' }));
+        break;
+      case 'reject':
+        dispatch(rejectAffiliation({ id: affiliationId, notes: 'Rejected by admin' }));
+        break;
+      case 'suspend':
+        dispatch(suspendAffiliation({ id: affiliationId, reason: 'Suspended by admin' }));
+        break;
+      case 'reactivate':
+        dispatch(reactivateAffiliation({ id: affiliationId, notes: 'Reactivated by admin' }));
+        break;
+      default:
+        console.log(`Affiliation ${action} for ID ${affiliationId}`);
+    }
   };
 
   const generateReport = () => {
-    // Generate affiliations report
-    console.log('Generating affiliations report');
+    dispatch(exportAffiliationsReport({ format: 'csv' }));
   };
 
   const filteredAffiliations = affiliations.filter(affiliation => {
-    const matchesSearch = affiliation.entityName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         affiliation.contactPerson.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === 'all' || affiliation.entityType === typeFilter;
+    const matchesSearch = affiliation.entity_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         affiliation.contact_person.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === 'all' || affiliation.entity_type === typeFilter;
     const matchesStatus = statusFilter === 'all' || affiliation.status === statusFilter;
     const matchesRegion = regionFilter === 'all' || affiliation.region === regionFilter;
     
     return matchesSearch && matchesType && matchesStatus && matchesRegion;
   });
 
-  const stats = {
+  // Use Redux stats or calculate from local data
+  const displayStats = reduxStats || {
     total: affiliations.length,
     active: affiliations.filter(a => a.status === 'active').length,
     pending: affiliations.filter(a => a.status === 'pending').length,
     suspended: affiliations.filter(a => a.status === 'suspended').length,
-    totalMembers: affiliations.reduce((sum, a) => sum + a.memberCount, 0),
-    averageCompliance: affiliations.reduce((sum, a) => sum + a.complianceScore, 0) / affiliations.length
+    total_members: affiliations.reduce((sum, a) => sum + a.member_count, 0),
+    average_compliance: affiliations.reduce((sum, a) => sum + a.compliance_score, 0) / affiliations.length
   };
 
   const regions = Array.from(new Set(affiliations.map(a => a.region)));
@@ -141,7 +157,7 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 animate-on-scroll">Total Affiliations</p>
-              <div className="text-2xl font-bold text-blue-600 animate-on-scroll">{stats.total}</div>
+              <div className="text-2xl font-bold text-blue-600 animate-on-scroll">{displayStats.total}</div>
               <p className="text-xs text-gray-600 animate-on-scroll">registered entities</p>
             </div>
             <div className="p-2 rounded-full bg-blue-100 text-blue-600 animate-on-scroll">
@@ -156,7 +172,7 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 animate-on-scroll">Active</p>
-              <div className="text-2xl font-bold text-green-600 animate-on-scroll">{stats.active}</div>
+              <div className="text-2xl font-bold text-green-600 animate-on-scroll">{displayStats.active}</div>
               <p className="text-xs text-gray-600 animate-on-scroll">current members</p>
             </div>
             <div className="p-2 rounded-full bg-green-100 text-green-600 animate-on-scroll">
@@ -171,7 +187,7 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 animate-on-scroll">Pending</p>
-              <div className="text-2xl font-bold text-yellow-600 animate-on-scroll">{stats.pending}</div>
+              <div className="text-2xl font-bold text-yellow-600 animate-on-scroll">{displayStats.pending}</div>
               <p className="text-xs text-gray-600 animate-on-scroll">awaiting approval</p>
             </div>
             <div className="p-2 rounded-full bg-yellow-100 text-yellow-600 animate-on-scroll">
@@ -186,7 +202,7 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 animate-on-scroll">Suspended</p>
-              <div className="text-2xl font-bold text-red-600 animate-on-scroll">{stats.suspended}</div>
+              <div className="text-2xl font-bold text-red-600 animate-on-scroll">{displayStats.suspended}</div>
               <p className="text-xs text-gray-600 animate-on-scroll">temporarily suspended</p>
             </div>
             <div className="p-2 rounded-full bg-red-100 text-red-600 animate-on-scroll">
@@ -201,7 +217,7 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 animate-on-scroll">Total Members</p>
-              <div className="text-2xl font-bold text-purple-600 animate-on-scroll">{stats.totalMembers.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-purple-600 animate-on-scroll">{displayStats.total_members.toLocaleString()}</div>
               <p className="text-xs text-gray-600 animate-on-scroll">across all entities</p>
             </div>
             <div className="p-2 rounded-full bg-purple-100 text-purple-600 animate-on-scroll">
@@ -216,7 +232,7 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 animate-on-scroll">Avg. Compliance</p>
-              <div className="text-2xl font-bold text-orange-600 animate-on-scroll">{stats.averageCompliance.toFixed(1)}%</div>
+              <div className="text-2xl font-bold text-orange-600 animate-on-scroll">{displayStats.average_compliance.toFixed(1)}%</div>
               <p className="text-xs text-gray-600 animate-on-scroll">compliance score</p>
             </div>
             <div className="p-2 rounded-full bg-orange-100 text-orange-600 animate-on-scroll">
@@ -317,30 +333,30 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
                   <tr key={affiliation.id} className="border-b border-gray-100 hover:bg-gray-50 animate-on-scroll">
                     <td className="py-3 px-4 font-medium animate-on-scroll">
                       <div>
-                        <div className="animate-on-scroll">{affiliation.entityName}</div>
-                        <div className="text-sm text-gray-500 animate-on-scroll">{affiliation.contactPerson}</div>
+                        <div className="animate-on-scroll">{affiliation.entity_name}</div>
+                        <div className="text-sm text-gray-500 animate-on-scroll">{affiliation.contact_person}</div>
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(affiliation.entityType)} animate-on-scroll`}>
+                      <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(affiliation.entity_type)} animate-on-scroll`}>
                         <div className="flex items-center space-x-1">
-                          {affiliation.entityType === 'club' && (
+                          {affiliation.entity_type === 'club' && (
                             <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
                           )}
-                          {affiliation.entityType === 'state' && (
+                          {affiliation.entity_type === 'state' && (
                             <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                           )}
-                          {affiliation.entityType === 'partner' && (
+                          {affiliation.entity_type === 'partner' && (
                             <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                             </svg>
                           )}
-                          <span className="capitalize animate-on-scroll">{affiliation.entityType}</span>
+                          <span className="capitalize animate-on-scroll">{affiliation.entity_type}</span>
                         </div>
                       </span>
                     </td>
@@ -355,8 +371,8 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
                     <td className="py-3 px-4 animate-on-scroll">{affiliation.region}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center space-x-2 animate-on-scroll">
-                        <span className="font-medium animate-on-scroll">{affiliation.memberCount.toLocaleString()}</span>
-                        {affiliation.memberCount > 100 && (
+                        <span className="font-medium animate-on-scroll">{affiliation.member_count.toLocaleString()}</span>
+                        {affiliation.member_count > 100 && (
                           <svg className="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17l9.2-9.2M17 17V7H7" />
                           </svg>
@@ -364,16 +380,16 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`font-medium ${getComplianceColor(affiliation.complianceScore)} animate-on-scroll`}>
-                        {affiliation.complianceScore}%
+                      <span className={`font-medium ${getComplianceColor(affiliation.compliance_score)} animate-on-scroll`}>
+                        {affiliation.compliance_score}%
                       </span>
                     </td>
-                    <td className="py-3 px-4 animate-on-scroll">{affiliation.renewalDate}</td>
+                    <td className="py-3 px-4 animate-on-scroll">{affiliation.renewal_date}</td>
                     <td className="py-3 px-4">
                       <div className="flex space-x-2">
                         <button
                           className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors animate-on-scroll"
-                          onClick={() => setSelectedAffiliation(affiliation)}
+                          onClick={() => dispatch(setSelectedAffiliation(affiliation))}
                         >
                           <svg className="h-4 w-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -451,7 +467,7 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
               <h3 className="text-lg font-semibold animate-on-scroll">Affiliation Details</h3>
               <button 
                 className="p-1 hover:bg-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 animate-on-scroll"
-                onClick={() => setSelectedAffiliation(null)}
+                onClick={() => dispatch(clearSelectedAffiliation())}
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -463,12 +479,12 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500 animate-on-scroll">Entity Name</label>
-                  <p className="font-medium animate-on-scroll">{selectedAffiliation.entityName}</p>
+                  <p className="font-medium animate-on-scroll">{selectedAffiliation.entity_name}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 animate-on-scroll">Type</label>
-                  <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(selectedAffiliation.entityType)} animate-on-scroll`}>
-                    <span className="capitalize animate-on-scroll">{selectedAffiliation.entityType}</span>
+                  <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(selectedAffiliation.entity_type)} animate-on-scroll`}>
+                    <span className="capitalize animate-on-scroll">{selectedAffiliation.entity_type}</span>
                   </span>
                 </div>
               </div>
@@ -492,12 +508,12 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500 animate-on-scroll">Member Count</label>
-                  <p className="font-medium animate-on-scroll">{selectedAffiliation.memberCount.toLocaleString()}</p>
+                  <p className="font-medium animate-on-scroll">{selectedAffiliation.member_count.toLocaleString()}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 animate-on-scroll">Compliance Score</label>
-                  <p className={`font-medium ${getComplianceColor(selectedAffiliation.complianceScore)} animate-on-scroll`}>
-                    {selectedAffiliation.complianceScore}%
+                  <p className={`font-medium ${getComplianceColor(selectedAffiliation.compliance_score)} animate-on-scroll`}>
+                    {selectedAffiliation.compliance_score}%
                   </p>
                 </div>
               </div>
@@ -505,28 +521,28 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500 animate-on-scroll">Join Date</label>
-                  <p className="animate-on-scroll">{selectedAffiliation.joinDate}</p>
+                  <p className="animate-on-scroll">{selectedAffiliation.join_date}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 animate-on-scroll">Renewal Date</label>
-                  <p className="animate-on-scroll">{selectedAffiliation.renewalDate}</p>
+                  <p className="animate-on-scroll">{selectedAffiliation.renewal_date}</p>
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500 animate-on-scroll">Contact Person</label>
-                  <p className="animate-on-scroll">{selectedAffiliation.contactPerson}</p>
+                  <p className="animate-on-scroll">{selectedAffiliation.contact_person}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 animate-on-scroll">Contact Email</label>
-                  <p className="animate-on-scroll">{selectedAffiliation.contactEmail}</p>
+                  <p className="animate-on-scroll">{selectedAffiliation.contact_email}</p>
                 </div>
               </div>
               
               <div>
                 <label className="text-sm font-medium text-gray-500 animate-on-scroll">Last Audit</label>
-                <p className="animate-on-scroll">{selectedAffiliation.lastAudit}</p>
+                <p className="animate-on-scroll">{selectedAffiliation.last_audit}</p>
               </div>
               
               <div>
@@ -542,7 +558,7 @@ const Affiliations: React.FC<AffiliationsProps> = ({ affiliations }) => {
             <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
               <button 
                 className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors animate-on-scroll"
-                onClick={() => setSelectedAffiliation(null)}
+                onClick={() => dispatch(clearSelectedAffiliation())}
               >
                 Close
               </button>

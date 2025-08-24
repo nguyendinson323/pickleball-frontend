@@ -1,54 +1,66 @@
-import React, { useState } from 'react';
-
-interface Message {
-  id: number;
-  subject: string;
-  sender: string;
-  recipients: string[];
-  priority: 'low' | 'normal' | 'high' | 'urgent';
-  status: 'draft' | 'sent' | 'delivered' | 'read' | 'failed';
-  category: 'announcement' | 'notification' | 'update' | 'maintenance' | 'general';
-  sentAt: string;
-  readAt?: string;
-  content: string;
-  attachments: string[];
-  tags: string[];
-}
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../../store';
+import { 
+  fetchAdminMessages, 
+  createAdminMessage, 
+  updateAdminMessage, 
+  deleteAdminMessage, 
+  sendAdminMessage,
+  fetchMessageStats,
+  setSelectedMessage,
+  clearSelectedMessage,
+  setShowCompose,
+  setComposeData,
+  resetComposeData
+} from '../../../store/slices/adminMessagesSlice';
+import { AppDispatch } from '../../../store';
 
 interface MessagingProps {
-  messages: Message[];
+  messages?: any[];
 }
 
-const Messaging: React.FC<MessagingProps> = ({ messages }) => {
+const Messaging: React.FC<MessagingProps> = ({ messages: propMessages }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { 
+    messages, 
+    selectedMessage, 
+    showCompose, 
+    composeData, 
+    loading, 
+    error, 
+    stats: reduxStats 
+  } = useSelector((state: RootState) => state.adminMessages);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  const [showCompose, setShowCompose] = useState(false);
-  const [composeData, setComposeData] = useState({
-    subject: '',
-    recipients: {
-      players: false,
-      coaches: false,
-      clubs: false,
-      partners: false,
-      stateCommittees: false,
-      admins: false
-    },
-    priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
-    category: 'general' as 'announcement' | 'notification' | 'update' | 'maintenance' | 'general',
-    content: '',
-    sendImmediately: true,
-    scheduledTime: '',
-    tags: [] as string[]
-  });
+
+  // Use prop messages if provided, otherwise use Redux state
+  const displayMessages = propMessages || messages;
+
+  useEffect(() => {
+    if (!propMessages) {
+      dispatch(fetchAdminMessages({}));
+      dispatch(fetchMessageStats());
+    }
+  }, [dispatch, propMessages]);
+
+  // Calculate stats from messages if not available from Redux
+  const calculatedStats = reduxStats || {
+    total: displayMessages.length,
+    draft: displayMessages.filter(m => m.status === 'draft').length,
+    scheduled: displayMessages.filter(m => m.status === 'scheduled').length,
+    sent: displayMessages.filter(m => m.status === 'sent').length,
+    cancelled: displayMessages.filter(m => m.status === 'cancelled').length
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'urgent': return 'bg-red-100 text-red-800';
       case 'high': return 'bg-orange-100 text-orange-800';
-      case 'normal': return 'bg-blue-100 text-blue-800';
+      case 'medium': return 'bg-blue-100 text-blue-800';
       case 'low': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -57,9 +69,9 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'sent': return 'bg-green-100 text-green-800';
-      case 'delivered': return 'bg-blue-100 text-blue-800';
-      case 'read': return 'bg-purple-100 text-purple-800';
-      case 'failed': return 'bg-red-100 text-red-800';
+      case 'scheduled': return 'bg-blue-100 text-blue-800';
+      case 'sending': return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
       case 'draft': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -69,9 +81,9 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
     switch (category) {
       case 'announcement': return 'bg-blue-100 text-blue-800';
       case 'notification': return 'bg-green-100 text-green-800';
-      case 'update': return 'bg-yellow-100 text-yellow-800';
-      case 'maintenance': return 'bg-orange-100 text-orange-800';
-      case 'general': return 'bg-gray-100 text-gray-800';
+      case 'alert': return 'bg-red-100 text-red-800';
+      case 'reminder': return 'bg-yellow-100 text-yellow-800';
+      case 'newsletter': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -83,17 +95,17 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       );
-      case 'delivered': return (
+      case 'scheduled': return (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       );
-      case 'read': return (
+      case 'sending': return (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       );
-      case 'failed': return (
+      case 'cancelled': return (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -111,7 +123,7 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
     }
   };
 
-  const handleMessageAction = (messageId: number, action: string) => {
+  const handleMessageAction = (messageId: string, action: string) => {
     // Handle message actions
     console.log(`Message ${action} for ID ${messageId}`);
   };
@@ -119,24 +131,9 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
   const handleSendMessage = () => {
     // Handle message sending logic
     console.log('Sending message:', composeData);
-    setShowCompose(false);
-    setComposeData({
-      subject: '',
-      recipients: {
-        players: false,
-        coaches: false,
-        clubs: false,
-        partners: false,
-        stateCommittees: false,
-        admins: false
-      },
-      priority: 'normal',
-      category: 'general',
-      content: '',
-      sendImmediately: true,
-      scheduledTime: '',
-      tags: []
-    });
+    dispatch(createAdminMessage(composeData));
+    dispatch(setShowCompose(false));
+    dispatch(resetComposeData());
   };
 
   const generateReport = () => {
@@ -144,28 +141,22 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
     console.log('Generating messaging report');
   };
 
-  const filteredMessages = messages.filter(message => {
-    const matchesSearch = message.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         message.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredMessages = displayMessages.filter(message => {
+    const matchesSearch = message.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         message.sender_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          message.content.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || message.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || message.priority === priorityFilter;
-    const matchesCategory = categoryFilter === 'all' || message.category === categoryFilter;
+    const matchesCategory = categoryFilter === 'all' || message.message_type === categoryFilter;
     
     return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
   });
 
-  const stats = {
-    total: messages.length,
-    sent: messages.filter(m => m.status === 'sent').length,
-    delivered: messages.filter(m => m.status === 'delivered').length,
-    read: messages.filter(m => m.status === 'read').length,
-    failed: messages.filter(m => m.status === 'failed').length,
-    drafts: messages.filter(m => m.status === 'draft').length
-  };
+  // Use calculated stats instead of local stats
+  const displayStats = calculatedStats;
 
-  const categories = ['announcement', 'notification', 'update', 'maintenance', 'general'];
-  const priorities = ['low', 'normal', 'high', 'urgent'];
+  const categories = ['announcement', 'notification', 'alert', 'reminder', 'newsletter'];
+  const priorities = ['low', 'medium', 'high', 'urgent'];
 
   return (
     <div className="space-y-6">
@@ -186,7 +177,7 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
             <span>Generate Report</span>
           </button>
           <button 
-            onClick={() => setShowCompose(true)} 
+            onClick={() => dispatch(setShowCompose(true))} 
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors animate-on-scroll"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,7 +197,7 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+          <div className="text-2xl font-bold text-blue-600">{displayStats.total}</div>
           <p className="text-xs text-gray-600">all messages</p>
         </div>
 
@@ -217,52 +208,41 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <div className="text-2xl font-bold text-green-600">{stats.sent}</div>
+          <div className="text-2xl font-bold text-green-600">{displayStats.sent}</div>
           <p className="text-xs text-gray-600">successfully sent</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6 animate-on-scroll">
           <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="text-sm font-medium">Delivered</h3>
-            <svg className="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="text-2xl font-bold text-blue-600">{stats.delivered}</div>
-          <p className="text-xs text-gray-600">delivered to recipients</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6 animate-on-scroll">
-          <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="text-sm font-medium">Read</h3>
-            <svg className="h-4 w-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="text-2xl font-bold text-purple-600">{stats.read}</div>
-          <p className="text-xs text-gray-600">read by recipients</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6 animate-on-scroll">
-          <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="text-sm font-medium">Failed</h3>
-            <svg className="h-4 w-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="text-2xl font-bold text-red-600">{stats.failed}</div>
-          <p className="text-xs text-gray-600">delivery failed</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6 animate-on-scroll">
-          <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="text-sm font-medium">Drafts</h3>
+            <h3 className="text-sm font-medium">Draft</h3>
             <svg className="h-4 w-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <div className="text-2xl font-bold text-yellow-600">{stats.drafts}</div>
-          <p className="text-xs text-gray-600">saved drafts</p>
+          <div className="text-2xl font-bold text-yellow-600">{displayStats.draft}</div>
+          <p className="text-xs text-gray-600">draft messages</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6 animate-on-scroll">
+          <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <h3 className="text-sm font-medium">Scheduled</h3>
+            <svg className="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="text-2xl font-bold text-blue-600">{displayStats.scheduled}</div>
+          <p className="text-xs text-gray-600">scheduled messages</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6 animate-on-scroll">
+          <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <h3 className="text-sm font-medium">Cancelled</h3>
+            <svg className="h-4 w-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="text-2xl font-bold text-red-600">{displayStats.cancelled}</div>
+          <p className="text-xs text-gray-600">cancelled messages</p>
         </div>
       </div>
 
@@ -295,10 +275,10 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
             >
               <option value="all">All Statuses</option>
               <option value="draft">Draft</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="sending">Sending</option>
               <option value="sent">Sent</option>
-              <option value="delivered">Delivered</option>
-              <option value="read">Read</option>
-              <option value="failed">Failed</option>
+              <option value="cancelled">Cancelled</option>
             </select>
           </div>
           <div>
@@ -311,7 +291,7 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
             >
               <option value="all">All Priorities</option>
               <option value="low">Low</option>
-              <option value="normal">Normal</option>
+              <option value="medium">Medium</option>
               <option value="high">High</option>
               <option value="urgent">Urgent</option>
             </select>
@@ -327,9 +307,9 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
               <option value="all">All Categories</option>
               <option value="announcement">Announcement</option>
               <option value="notification">Notification</option>
-              <option value="update">Update</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="general">General</option>
+              <option value="alert">Alert</option>
+              <option value="reminder">Reminder</option>
+              <option value="newsletter">Newsletter</option>
             </select>
           </div>
         </div>
@@ -344,13 +324,13 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sender</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipients</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sent At</th>
+                                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sender</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipients</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sent At</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -359,8 +339,8 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
                 <tr key={message.id} className="hover:bg-gray-100">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div>
-                      <div>{message.subject}</div>
-                      {message.tags.length > 0 && (
+                      <div>{message.title}</div>
+                      {message.tags && message.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {message.tags.slice(0, 2).map((tag, index) => (
                             <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -376,15 +356,15 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{message.sender}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">{message.sender_name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(message.priority)}`}>
                       <span className="capitalize">{message.priority}</span>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCategoryColor(message.category)}`}>
-                      <span className="capitalize">{message.category}</span>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCategoryColor(message.message_type)}`}>
+                      <span className="capitalize">{message.message_type}</span>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -400,14 +380,14 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
                       <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                       </svg>
-                      <span>{message.recipients.length}</span>
+                      <span>{message.total_recipients || 0}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{message.sentAt}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">{message.sent_at || 'Not sent'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-sm font-medium">
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => setSelectedMessage(message)}
+                        onClick={() => dispatch(setSelectedMessage(message))}
                         className="px-4 py-2 text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                       >
                         <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -473,7 +453,7 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto animate-on-scroll">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Message Details</h3>
-              <button onClick={() => setSelectedMessage(null)} className="text-gray-500 hover:text-gray-700 focus:outline-none">
+              <button onClick={() => dispatch(clearSelectedMessage())} className="text-gray-500 hover:text-gray-700 focus:outline-none">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -483,12 +463,12 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="subject" className="block text-sm font-medium text-gray-700">Subject</label>
-                  <p className="font-medium">{selectedMessage.subject}</p>
+                  <label htmlFor="title" className="block text-sm font-medium text-gray-700">Title</label>
+                  <p className="font-medium">{selectedMessage.title}</p>
                 </div>
                 <div>
                   <label htmlFor="sender" className="block text-sm font-medium text-gray-700">Sender</label>
-                  <p>{selectedMessage.sender}</p>
+                  <p>{selectedMessage.sender_name}</p>
                 </div>
               </div>
               
@@ -500,9 +480,9 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
                   </span>
                 </div>
                 <div>
-                  <label htmlFor="category" className="block text-sm font-medium text-gray-700">Category</label>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCategoryColor(selectedMessage.category)}`}>
-                    <span className="capitalize">{selectedMessage.category}</span>
+                  <label htmlFor="message_type" className="block text-sm font-medium text-gray-700">Type</label>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCategoryColor(selectedMessage.message_type)}`}>
+                    <span className="capitalize">{selectedMessage.message_type}</span>
                   </span>
                 </div>
               </div>
@@ -518,27 +498,14 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
                   </span>
                 </div>
                 <div>
-                  <label htmlFor="sentAt" className="block text-sm font-medium text-gray-700">Sent At</label>
-                  <p>{selectedMessage.sentAt}</p>
+                  <label htmlFor="sent_at" className="block text-sm font-medium text-gray-700">Sent At</label>
+                  <p>{selectedMessage.sent_at || 'Not sent'}</p>
                 </div>
               </div>
               
-              {selectedMessage.readAt && (
-                <div>
-                  <label htmlFor="readAt" className="block text-sm font-medium text-gray-700">Read At</label>
-                  <p>{selectedMessage.readAt}</p>
-                </div>
-              )}
-              
               <div>
-                <label htmlFor="recipients" className="block text-sm font-medium text-gray-700">Recipients</label>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {selectedMessage.recipients.map((recipient, index) => (
-                    <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {recipient}
-                    </span>
-                  ))}
-                </div>
+                <label htmlFor="recipients" className="block text-sm font-medium text-gray-700">Total Recipients</label>
+                <p>{selectedMessage.total_recipients || 0}</p>
               </div>
               
               <div>
@@ -576,7 +543,7 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
             </div>
             
             <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
-              <button onClick={() => setSelectedMessage(null)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+              <button onClick={() => dispatch(clearSelectedMessage())} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                 Close
               </button>
               {selectedMessage.status === 'draft' && (
@@ -612,7 +579,7 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
           <div className="bg-white rounded-lg p-6 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto animate-on-scroll">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Compose System Message</h3>
-              <button onClick={() => setShowCompose(false)} className="text-gray-500 hover:text-gray-700 focus:outline-none">
+              <button onClick={() => dispatch(setShowCompose(false))} className="text-gray-500 hover:text-gray-700 focus:outline-none">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -621,13 +588,13 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
             
             <div className="space-y-4">
               <div>
-                <label htmlFor="composeSubject" className="block text-sm font-medium text-gray-700">Subject</label>
+                <label htmlFor="composeTitle" className="block text-sm font-medium text-gray-700">Title</label>
                 <input
                   type="text"
-                  id="composeSubject"
-                  value={composeData.subject}
-                  onChange={(e) => setComposeData({...composeData, subject: e.target.value})}
-                  placeholder="Enter message subject"
+                  id="composeTitle"
+                  value={composeData.title}
+                  onChange={(e) => dispatch(setComposeData({...composeData, title: e.target.value}))}
+                  placeholder="Enter message title"
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -638,7 +605,7 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
                   <select
                     id="composePriority"
                     value={composeData.priority}
-                    onChange={(e) => setComposeData({...composeData, priority: e.target.value as 'low' | 'normal' | 'high' | 'urgent'})}
+                    onChange={(e) => dispatch(setComposeData({...composeData, priority: e.target.value as 'low' | 'medium' | 'high' | 'urgent'}))}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   >
                     {priorities.map(priority => (
@@ -650,11 +617,11 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
                 </div>
                 
                 <div>
-                  <label htmlFor="composeCategory" className="block text-sm font-medium text-gray-700">Category</label>
+                  <label htmlFor="composeMessageType" className="block text-sm font-medium text-gray-700">Message Type</label>
                   <select
-                    id="composeCategory"
-                    value={composeData.category}
-                    onChange={(e) => setComposeData({...composeData, category: e.target.value as 'announcement' | 'notification' | 'update' | 'maintenance' | 'general'})}
+                    id="composeMessageType"
+                    value={composeData.message_type}
+                    onChange={(e) => dispatch(setComposeData({...composeData, message_type: e.target.value as 'announcement' | 'notification' | 'alert' | 'reminder' | 'newsletter'}))}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   >
                     {categories.map(category => (
@@ -667,26 +634,22 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
               </div>
               
               <div>
-                <label htmlFor="composeRecipients" className="block text-sm font-medium text-gray-700">Recipients</label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                  {Object.entries(composeData.recipients).map(([key, value]) => (
-                    <label key={key} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={value as boolean}
-                        onChange={(e) => setComposeData({
-                          ...composeData,
-                          recipients: {
-                            ...composeData.recipients,
-                            [key]: e.target.checked
-                          }
-                        })}
-                        className="rounded text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                    </label>
-                  ))}
-                </div>
+                <label htmlFor="composeTargetAudience" className="block text-sm font-medium text-gray-700">Target Audience</label>
+                <select
+                  id="composeTargetAudience"
+                  value={composeData.target_audience}
+                  onChange={(e) => dispatch(setComposeData({...composeData, target_audience: e.target.value}))}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all_users">All Users</option>
+                  <option value="players">Players</option>
+                  <option value="coaches">Coaches</option>
+                  <option value="clubs">Clubs</option>
+                  <option value="partners">Partners</option>
+                  <option value="states">State Committees</option>
+                  <option value="players_coaches">Players & Coaches</option>
+                  <option value="business_users">Business Users</option>
+                </select>
               </div>
               
               <div>
@@ -694,7 +657,7 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
                 <textarea
                   id="composeContent"
                   value={composeData.content}
-                  onChange={(e) => setComposeData({...composeData, content: e.target.value})}
+                  onChange={(e) => dispatch(setComposeData({...composeData, content: e.target.value}))}
                   placeholder="Enter your message content..."
                   rows={6}
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
@@ -706,11 +669,11 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
                   <label htmlFor="composeSendTime" className="block text-sm font-medium text-gray-700">Send Time</label>
                   <select
                     id="composeSendTime"
-                    value={composeData.sendImmediately ? 'immediate' : 'scheduled'}
-                    onChange={(e) => setComposeData({
+                    value={composeData.scheduled_send_at ? 'scheduled' : 'immediate'}
+                    onChange={(e) => dispatch(setComposeData({
                       ...composeData, 
-                      sendImmediately: e.target.value === 'immediate'
-                    })}
+                      scheduled_send_at: e.target.value === 'scheduled' ? new Date().toISOString().slice(0, 16) : undefined
+                    }))}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="immediate">Send Immediately</option>
@@ -718,14 +681,14 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
                   </select>
                 </div>
                 
-                {!composeData.sendImmediately && (
+                {composeData.scheduled_send_at && (
                   <div>
                     <label htmlFor="composeScheduledTime" className="block text-sm font-medium text-gray-700">Scheduled Time</label>
                     <input
                       type="datetime-local"
                       id="composeScheduledTime"
-                      value={composeData.scheduledTime}
-                      onChange={(e) => setComposeData({...composeData, scheduledTime: e.target.value})}
+                      value={composeData.scheduled_send_at}
+                      onChange={(e) => dispatch(setComposeData({...composeData, scheduled_send_at: e.target.value}))}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -734,10 +697,10 @@ const Messaging: React.FC<MessagingProps> = ({ messages }) => {
             </div>
             
             <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
-              <button onClick={() => setShowCompose(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+              <button onClick={() => dispatch(setShowCompose(false))} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                 Cancel
               </button>
-              <button onClick={() => setComposeData({...composeData, content: ''})} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+              <button onClick={() => dispatch(setComposeData({...composeData, content: ''}))} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                 Save Draft
               </button>
               <button onClick={handleSendMessage} className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">

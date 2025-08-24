@@ -6,8 +6,11 @@ import tournamentsReducer from './slices/tournamentsSlice'
 import courtsReducer from './slices/courtsSlice'
 import paymentsReducer from './slices/paymentsSlice'
 import rankingsReducer from './slices/rankingsSlice'
+import adminRankingsReducer from './slices/rankingsSlice'
 import notificationsReducer from './slices/notificationsSlice'
 import adminReducer from './slices/adminSlice'
+import adminMessagesReducer from './slices/adminMessagesSlice'
+import affiliationsReducer from './slices/affiliationsSlice'
 import statsReducer from './slices/statsSlice'
 import bannersReducer from './slices/bannersSlice'
 import playerFinderReducer from './slices/playerFinderSlice'
@@ -24,10 +27,13 @@ export const store = configureStore({
     courts: courtsReducer,
     payments: paymentsReducer,
     rankings: rankingsReducer,
+    adminRankings: adminRankingsReducer,
     notifications: notificationsReducer,
     admin: adminReducer,
-    stats: statsReducer,
-    banners: bannersReducer,
+                adminMessages: adminMessagesReducer,
+            affiliations: affiliationsReducer,
+            stats: statsReducer,
+            banners: bannersReducer,
     playerFinder: playerFinderReducer,
     courtReservations: courtReservationsReducer,
     pending: pendingReducer,
