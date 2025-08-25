@@ -10,6 +10,7 @@ import {
   regenerateQRCode
 } from '../store/slices/digitalCredentialsSlice';
 import { toast } from 'sonner';
+import { getImageUrl } from '../lib/utils';
 import { 
   Download, 
   RefreshCw, 
@@ -25,6 +26,7 @@ import {
   Printer,
   Eye
 } from 'lucide-react';
+import QRCodeDisplay from './QRCodeDisplay';
 
 interface DigitalIDCardProps {
   className?: string;
@@ -57,10 +59,15 @@ const DigitalIDCard: React.FC<DigitalIDCardProps> = ({ className = '' }) => {
     if (!credential) return;
     
     try {
-      await dispatch(regenerateQRCode(credential.id)).unwrap();
+      const result = await dispatch(regenerateQRCode(credential.id)).unwrap();
+      console.log('QR code regenerated successfully:', result);
       toast.success('QR code regenerated successfully!');
-    } catch (error) {
-      toast.error('Failed to regenerate QR code');
+      
+      // Force a refresh of the credential data to ensure UI updates
+      dispatch(fetchMyDigitalCredential());
+    } catch (error: any) {
+      console.error('Failed to regenerate QR code:', error);
+      toast.error(error || 'Failed to regenerate QR code');
     }
   };
 
@@ -386,50 +393,17 @@ const DigitalIDCard: React.FC<DigitalIDCardProps> = ({ className = '' }) => {
       {/* QR Code Modal */}
       {showQRModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 text-center">Digital Credential QR Code</h3>
-              
-              <div className="text-center space-y-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <img 
-                    src={credential.qr_code_url} 
-                    alt="QR Code" 
-                    className="mx-auto w-48 h-48"
-                  />
-                </div>
-                
-                <div className="space-y-2 text-sm">
-                  <p className="text-gray-600">
-                    <span className="font-semibold">Credential ID:</span> {credential.credential_number}
-                  </p>
-                  <p className="text-gray-600">
-                    <span className="font-semibold">Verification Code:</span> {credential.verification_code}
-                  </p>
-                  <p className="text-gray-600">
-                    <span className="font-semibold">Status:</span> 
-                    <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(credential.affiliation_status)}`}>
-                      {credential.affiliation_status.charAt(0).toUpperCase() + credential.affiliation_status.slice(1)}
-                    </span>
-                  </p>
-                </div>
-                
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                  <p className="text-xs text-blue-700">
-                    <strong>Note:</strong> This QR code can be scanned by tournament officials and club staff for quick verification.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex justify-center mt-6 pt-4 border-t">
-                <button
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  onClick={() => setShowQRModal(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
+          <div className="relative top-20 mx-auto p-5">
+            <QRCodeDisplay
+              qrCodeUrl={credential.qr_code_url}
+              qrCodeData={credential.qr_code_data}
+              credentialNumber={credential.credential_number}
+              verificationCode={credential.verification_code}
+              playerName={credential.player_name}
+              onRegenerate={handleRegenerateQR}
+              onClose={() => setShowQRModal(false)}
+              loading={loading}
+            />
           </div>
         </div>
       )}
@@ -549,7 +523,7 @@ const DigitalIDCard: React.FC<DigitalIDCardProps> = ({ className = '' }) => {
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">Verification QR Code</h3>
                   <div className="bg-gray-50 p-6 rounded-lg inline-block">
                     <img 
-                      src={credential.qr_code_url} 
+                      src={getImageUrl(credential.qr_code_url)} 
                       alt="QR Code" 
                       className="w-32 h-32"
                     />

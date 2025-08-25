@@ -7,7 +7,9 @@ import {
   VerifyDigitalCredentialResponse,
   UpdateDigitalCredentialResponse,
   RegenerateQRCodeResponse,
-  GetAllDigitalCredentialsResponse
+  GetAllDigitalCredentialsResponse,
+  GetCredentialStatsResponse,
+  DeleteDigitalCredentialResponse
 } from '../types/api';
 
 const apiClient = axios.create({
@@ -95,6 +97,9 @@ export const digitalCredentialApi = {
   // Get the authenticated user's digital credential
   getMyCredential: () => get<GetDigitalCredentialResponse>('/digital-credentials/my-credential'),
   
+  // Get digital credential by ID (admin or owner)
+  getById: (id: string) => get<GetDigitalCredentialResponse>(`/digital-credentials/${id}`),
+  
   // Verify a digital credential by verification code (public)
   verify: (verificationCode: string) => get<VerifyDigitalCredentialResponse>(`/digital-credentials/verify/${verificationCode}`),
   
@@ -105,8 +110,20 @@ export const digitalCredentialApi = {
   regenerateQR: (id: string) => post<RegenerateQRCodeResponse>(`/digital-credentials/${id}/regenerate-qr`, {}),
   
   // Get all digital credentials (admin only)
-  getAll: (params?: { page?: number; limit?: number; affiliation_status?: string; state_affiliation?: string; is_verified?: boolean }) => 
-    get<GetAllDigitalCredentialsResponse>('/digital-credentials', { params })
+  getAll: (params?: { 
+    page?: number; 
+    limit?: number; 
+    affiliation_status?: string; 
+    state_affiliation?: string; 
+    is_verified?: boolean;
+    search?: string;
+  }) => get<GetAllDigitalCredentialsResponse>('/digital-credentials', { params }),
+  
+  // Get credential statistics (admin only)
+  getStats: () => get<GetCredentialStatsResponse>('/digital-credentials/stats'),
+  
+  // Delete digital credential (admin only)
+  delete: (id: string) => del<DeleteDigitalCredentialResponse>(`/digital-credentials/${id}`)
 };
 
 export const api = {

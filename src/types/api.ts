@@ -912,4 +912,27 @@ export interface GetAllDigitalCredentialsResponse extends PaginatedResponse<Digi
 export interface RegenerateQRCodeResponse extends ApiResponse<{
   qr_code_url: string;
   qr_code_data: string;
-}> {} 
+  qr_code_filename: string;
+  security_features: {
+    digital_signature: boolean;
+    jwt_token: boolean;
+    timestamp: string;
+  };
+}> {
+  qrCodeUrl: string;
+  qrCodeData: string;
+}
+
+// New response types for optimized API
+export interface GetCredentialStatsResponse extends ApiResponse<{
+  total: number;
+  active: number;
+  breakdown: Array<{
+    affiliation_status: string;
+    state_affiliation: string;
+    is_verified: boolean;
+    count: number;
+  }>;
+}> {}
+
+export interface DeleteDigitalCredentialResponse extends ApiResponse<null> {} 
