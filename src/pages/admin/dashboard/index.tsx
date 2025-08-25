@@ -114,31 +114,37 @@ const AdminDashboard = () => {
   // Rankings management data
   const rankingIssues = [
     {
-      id: 1,
-      player: 'Maria González',
-      currentRank: 45,
-      requestedRank: 42,
+      id: '1',
+      player_id: 'player_001',
+      player_name: 'Maria González',
+      player_email: 'maria.gonzalez@example.com',
+      current_rank: 45,
+      requested_rank: 42,
       reason: 'Tournament performance improvement',
       status: 'pending' as const,
-      submitted: '2024-03-25'
+      submitted_at: '2024-03-25'
     },
     {
-      id: 2,
-      player: 'Carlos Rodríguez',
-      currentRank: 38,
-      requestedRank: 35,
+      id: '2',
+      player_id: 'player_002',
+      player_name: 'Carlos Rodríguez',
+      player_email: 'carlos.rodriguez@example.com',
+      current_rank: 38,
+      requested_rank: 35,
       reason: 'Recent tournament wins',
       status: 'approved' as const,
-      submitted: '2024-03-24'
+      submitted_at: '2024-03-24'
     },
     {
-      id: 3,
-      player: 'Ana Martínez',
-      currentRank: 52,
-      requestedRank: 48,
+      id: '3',
+      player_id: 'player_003',
+      player_name: 'Ana Martínez',
+      player_email: 'ana.martinez@example.com',
+      current_rank: 52,
+      requested_rank: 48,
       reason: 'Skill level assessment',
       status: 'rejected' as const,
-      submitted: '2024-03-23'
+      submitted_at: '2024-03-23'
     }
   ];
 
@@ -436,7 +442,7 @@ const AdminDashboard = () => {
               {activeTab === 'affiliations' && (
                 <div>
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <Affiliations affiliations={affiliations} />
+                    <Affiliations />
                   </div>
                 </div>
               )}
@@ -452,25 +458,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* System Overview */}
-        <div className="mb-8">
-          <div className="w-full">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">System Overview</h2>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <Overview
-                    systemStats={systemStats}
-                    recentSystemEvents={recentSystemEvents}
-                    pendingActions={pendingActions}
-                    timeRange="30"
-                    setTimeRange={() => {}}
-                showMessaging={false}
-                setShowMessaging={() => {}}
-                    messageData={messageData}
-                setMessageData={() => {}}
-              />
-            </div>
-          </div>
-        </div>
+        {/* Additional System Information can be added here if needed */}
       </div>
     </div>
   );

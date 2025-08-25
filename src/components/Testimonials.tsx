@@ -1,14 +1,14 @@
 import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Star, Play, Pause, ChevronLeft, ChevronRight } from "lucide-react";
-import { componentAnimations } from "@/lib/animations";
+import { componentAnimations } from "../lib/animations";
 import { useState, useEffect, useCallback } from "react";
-import sarahImg from "/img/testimonial-sarah.jpg";
-import michaelImg from "/img/testimonial-michael.jpg";
-import jenniferImg from "/img/testimonial-jennifer.jpg";
-import davidImg from "/img/testimonial-david.jpg";
-import lisaImg from "/img/testimonial-lisa.jpg";
-import omarImg from "/img/testimonial-omar.jpg";
+// Note: Images are served from public directory, accessed via URL paths
+const sarahImg = "/img/testimonial-sarah.jpg";
+const michaelImg = "/img/testimonial-michael.jpg";
+const jenniferImg = "/img/testimonial-jennifer.jpg";
+const davidImg = "/img/testimonial-david.jpg";
+const lisaImg = "/img/testimonial-lisa.jpg";
+const omarImg = "/img/testimonial-omar.jpg";
 
 const Testimonials = () => {
   const [current, setCurrent] = useState(0);

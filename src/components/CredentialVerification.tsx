@@ -12,6 +12,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { digitalCredentialApi } from '../lib/api';
 import { toast } from 'sonner';
+import { DigitalCredential } from '../types/api';
 import { 
   QrCode, 
   Shield, 
@@ -31,7 +32,7 @@ import {
 import { getImageUrl } from '../lib/utils';
 
 interface VerificationResult {
-  credential: any;
+  credential: DigitalCredential;
   verification: {
     timestamp: string;
     method: string;
@@ -101,15 +102,25 @@ const CredentialVerification: React.FC<CredentialVerificationProps> = ({
     try {
       const response = await digitalCredentialApi.verify(code);
       const result: VerificationResult = {
-        credential: response.data.credential,
-        verification: response.data.verification
+        credential: response.data,
+        verification: {
+          timestamp: new Date().toISOString(),
+          method: 'api_verification',
+          valid: true
+        }
       };
       
       setVerificationResult(result);
       onVerificationComplete?.(result);
       toast.success('Credential verified successfully');
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to verify credential';
+    } catch (error: unknown) {
+      let errorMessage = 'Failed to verify credential';
+      
+      if (error && typeof error === 'object' && 'response' in error) {
+        const responseError = error as { response?: { data?: { message?: string } } };
+        errorMessage = responseError.response?.data?.message || errorMessage;
+      }
+      
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {

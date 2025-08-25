@@ -1,9 +1,4 @@
 import { useState } from 'react';
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Label } from './ui/label';
-import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { toast } from 'sonner';
 import { CreditCard, Lock, CheckCircle } from 'lucide-react';
 
@@ -14,7 +9,7 @@ interface PaymentFormProps {
   description: string;
   onSuccess?: (paymentId: string) => void;
   onCancel?: () => void;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
 }
 
 const PaymentForm = ({ 
@@ -76,7 +71,7 @@ const PaymentForm = ({
       setFormData(prev => ({
         ...prev,
         [parent]: {
-          ...(prev[parent as keyof typeof prev] as any),
+          ...(prev[parent as keyof typeof prev] as Record<string, string>),
           [child]: value
         }
       }));
@@ -111,54 +106,48 @@ const PaymentForm = ({
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
+    <div className="w-full max-w-md mx-auto bg-white rounded-lg shadow-lg border border-gray-200">
+      <div className="text-center p-6 border-b border-gray-200">
         <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
           <CreditCard className="w-6 h-6 text-green-600" />
         </div>
-        <CardTitle className="text-xl font-semibold">
+        <h2 className="text-xl font-semibold text-gray-900">
           {getPaymentTypeLabel(paymentType)}
-        </CardTitle>
-        <CardDescription>
+        </h2>
+        <p className="text-gray-600 mt-1">
           {description}
-        </CardDescription>
+        </p>
         <div className="text-2xl font-bold text-green-600 mt-2">
           {formatCurrency(amount, currency)}
         </div>
-      </CardHeader>
+      </div>
       
-      <CardContent>
+      <div className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Payment Method Selection */}
           <div className="space-y-2">
-            <Label>Payment Method</Label>
-            <Select value={paymentMethod} onValueChange={(value: 'stripe' | 'paypal') => setPaymentMethod(value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="stripe">
-                  <div className="flex items-center space-x-2">
-                    <CreditCard className="w-4 h-4" />
-                    <span>Credit Card (Stripe)</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="paypal">
-                  <div className="flex items-center space-x-2">
-                    <span>PayPal</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+            <select 
+              value={paymentMethod} 
+              onChange={(e) => setPaymentMethod(e.target.value as 'stripe' | 'paypal')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="stripe">
+                Credit Card (Stripe)
+              </option>
+              <option value="paypal">
+                PayPal
+              </option>
+            </select>
           </div>
 
           {paymentMethod === 'stripe' && (
             <>
               {/* Card Number */}
               <div className="space-y-2">
-                <Label htmlFor="cardNumber">Card Number</Label>
+                <label htmlFor="cardNumber" className="block text-sm font-medium text-gray-700">Card Number</label>
                 <div className="relative">
-                  <Input
+                  <input
                     id="cardNumber"
                     type="text"
                     placeholder="1234 5678 9012 3456"
@@ -166,6 +155,7 @@ const PaymentForm = ({
                     onChange={(e) => handleInputChange('cardNumber', e.target.value)}
                     maxLength={19}
                     required
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   <CreditCard className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 </div>
@@ -174,8 +164,8 @@ const PaymentForm = ({
               {/* Card Details Row */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="expiryDate">Expiry Date</Label>
-                  <Input
+                  <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700">Expiry Date</label>
+                  <input
                     id="expiryDate"
                     type="text"
                     placeholder="MM/YY"
@@ -183,11 +173,12 @@ const PaymentForm = ({
                     onChange={(e) => handleInputChange('expiryDate', e.target.value)}
                     maxLength={5}
                     required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cvv">CVV</Label>
-                  <Input
+                  <label htmlFor="cvv" className="block text-sm font-medium text-gray-700">CVV</label>
+                  <input
                     id="cvv"
                     type="text"
                     placeholder="123"
@@ -195,84 +186,88 @@ const PaymentForm = ({
                     onChange={(e) => handleInputChange('cvv', e.target.value)}
                     maxLength={4}
                     required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
 
               {/* Cardholder Name */}
               <div className="space-y-2">
-                <Label htmlFor="cardholderName">Cardholder Name</Label>
-                <Input
+                <label htmlFor="cardholderName" className="block text-sm font-medium text-gray-700">Cardholder Name</label>
+                <input
                   id="cardholderName"
                   type="text"
                   placeholder="John Doe"
                   value={formData.cardholderName}
                   onChange={(e) => handleInputChange('cardholderName', e.target.value)}
                   required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+                <input
                   id="email"
                   type="email"
                   placeholder="john@example.com"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               {/* Billing Address */}
               <div className="space-y-2">
-                <Label>Billing Address</Label>
-                <Input
+                <label className="block text-sm font-medium text-gray-700">Billing Address</label>
+                <input
                   placeholder="Street Address"
                   value={formData.billingAddress.line1}
                   onChange={(e) => handleInputChange('billingAddress.line1', e.target.value)}
                   required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-                <Input
+                <input
                   placeholder="Apartment, suite, etc. (optional)"
                   value={formData.billingAddress.line2}
                   onChange={(e) => handleInputChange('billingAddress.line2', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <div className="grid grid-cols-2 gap-4">
-                  <Input
+                  <input
                     placeholder="City"
                     value={formData.billingAddress.city}
                     onChange={(e) => handleInputChange('billingAddress.city', e.target.value)}
                     required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                  <Input
+                  <input
                     placeholder="State"
                     value={formData.billingAddress.state}
                     onChange={(e) => handleInputChange('billingAddress.state', e.target.value)}
                     required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input
+                  <input
                     placeholder="Postal Code"
                     value={formData.billingAddress.postalCode}
                     onChange={(e) => handleInputChange('billingAddress.postalCode', e.target.value)}
                     required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                  <Select 
+                  <select 
                     value={formData.billingAddress.country} 
-                    onValueChange={(value) => handleInputChange('billingAddress.country', value)}
+                    onChange={(e) => handleInputChange('billingAddress.country', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="US">United States</SelectItem>
-                      <SelectItem value="CA">Canada</SelectItem>
-                      <SelectItem value="MX">Mexico</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <option value="US">United States</option>
+                    <option value="CA">Canada</option>
+                    <option value="MX">Mexico</option>
+                  </select>
                 </div>
               </div>
             </>
@@ -287,19 +282,18 @@ const PaymentForm = ({
           {/* Action Buttons */}
           <div className="flex space-x-3">
             {onCancel && (
-              <Button
+              <button
                 type="button"
-                variant="outline"
                 onClick={onCancel}
-                className="flex-1"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={loading}
               >
                 Cancel
-              </Button>
+              </button>
             )}
-            <Button
+            <button
               type="submit"
-              className="flex-1 bg-green-600 hover:bg-green-700"
+              className="flex-1 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading}
             >
               {loading ? (
@@ -313,11 +307,11 @@ const PaymentForm = ({
                   <span>Pay {formatCurrency(amount, currency)}</span>
                 </div>
               )}
-            </Button>
+            </button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
