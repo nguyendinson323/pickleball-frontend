@@ -246,7 +246,12 @@ const Overview: React.FC<OverviewProps> = ({ stateStats, recentMembers, recentAn
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600 mb-1">
-              {((stateStats.activeMembers / stateStats.totalMembers) * 100).toFixed(1)}%
+              {safeDisplayValue(
+                stateStats.totalMembers > 0 
+                  ? ((stateStats.activeMembers / stateStats.totalMembers) * 100) 
+                  : 0, 
+                '0'
+              )}%
             </div>
             <p className="text-sm text-gray-600">Member Retention</p>
           </div>

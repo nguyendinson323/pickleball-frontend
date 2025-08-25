@@ -589,7 +589,16 @@ const StateDashboard = () => {
                   <LoadingSkeleton />
                 ) : (
                   <Overview 
-                    stateStats={stateStats}
+                    stateStats={{
+                      totalMembers: ensureValidNumber(stateStats.totalMembers, 0),
+                      activeMembers: ensureValidNumber(stateStats.activeMembers, 0),
+                      totalClubs: ensureValidNumber(stateStats.totalClubs, 0),
+                      totalCourts: ensureValidNumber(stateStats.totalCourts, 0),
+                      totalTournaments: ensureValidNumber(stateStats.totalTournaments, 0),
+                      monthlyRevenue: ensureValidNumber(stateStats.monthlyRevenue, 0),
+                      pendingApplications: ensureValidNumber(stateStats.pendingApplications, 0),
+                      upcomingEvents: ensureValidNumber(stateStats.upcomingEvents, 0)
+                    }}
                     recentMembers={recentMembers}
                     recentAnnouncements={recentAnnouncements}
                   />
