@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '../../lib/api';
+import { ApiResponse } from '../../types/api';
 
 interface OverviewStats {
   total_users: number;
@@ -33,15 +34,25 @@ const initialState: StatsState = {
 
 export const fetchOverviewStats = createAsyncThunk(
   'stats/fetchOverviewStats',
-  async () => {
-    return await api.get('/stats/overview');
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get<ApiResponse<OverviewStats>>('/stats/overview');
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch overview stats');
+    }
   }
 );
 
 export const fetchUserStats = createAsyncThunk(
   'stats/fetchUserStats',
-  async () => {
-    return await api.get('/stats/users');
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get<ApiResponse<UserStats>>('/stats/users');
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch user stats');
+    }
   }
 );
 
@@ -68,14 +79,11 @@ const statsSlice = createSlice({
       })
       .addCase(fetchOverviewStats.fulfilled, (state, action) => {
         state.loading = false;
-        const payload = action.payload as any;
-        if (payload) {
-          state.overviewStats = payload;
-        }
+        state.overviewStats = action.payload;
       })
       .addCase(fetchOverviewStats.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch overview stats';
+        state.error = action.payload as string || 'Failed to fetch overview stats';
       })
       // Fetch User Stats
       .addCase(fetchUserStats.pending, (state) => {
@@ -84,14 +92,11 @@ const statsSlice = createSlice({
       })
       .addCase(fetchUserStats.fulfilled, (state, action) => {
         state.loading = false;
-        const payload = action.payload as any;
-        if (payload) {
-          state.userStats = payload;
-        }
+        state.userStats = action.payload;
       })
       .addCase(fetchUserStats.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch user stats';
+        state.error = action.payload as string || 'Failed to fetch user stats';
       });
   },
 });

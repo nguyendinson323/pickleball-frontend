@@ -43,6 +43,14 @@ interface OverviewProps {
 }
 
 const Overview: React.FC<OverviewProps> = ({ stateStats, recentMembers, recentAnnouncements }) => {
+  // Safety function to ensure valid display values
+  const safeDisplayValue = (value: any, fallback: string = '0'): string => {
+    if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+      return value.toString();
+    }
+    return fallback;
+  };
+
   const quickActions = [
     { name: 'Add New Member', icon: Users, href: '/state/members', color: 'bg-blue-500' },
     { name: 'Manage Courts', icon: MapPin, href: '/state/courts', color: 'bg-green-500' },
@@ -78,7 +86,7 @@ const Overview: React.FC<OverviewProps> = ({ stateStats, recentMembers, recentAn
             <p className="text-sm font-medium text-gray-600">Total Members</p>
             <Users className="h-4 w-4 text-blue-500" />
           </div>
-          <div className="text-2xl font-bold text-blue-600">{stateStats.totalMembers.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-blue-600">{safeDisplayValue(stateStats.totalMembers)}</div>
           <p className="text-xs text-gray-600">registered members</p>
         </div>
 
@@ -87,7 +95,7 @@ const Overview: React.FC<OverviewProps> = ({ stateStats, recentMembers, recentAn
             <p className="text-sm font-medium text-gray-600">Total Clubs</p>
             <Building2 className="h-4 w-4 text-green-500" />
           </div>
-          <div className="text-2xl font-bold text-green-600">{stateStats.totalClubs}</div>
+          <div className="text-2xl font-bold text-green-600">{safeDisplayValue(stateStats.totalClubs)}</div>
           <p className="text-xs text-gray-600">affiliated clubs</p>
         </div>
 
@@ -96,7 +104,7 @@ const Overview: React.FC<OverviewProps> = ({ stateStats, recentMembers, recentAn
             <p className="text-sm font-medium text-gray-600">Total Courts</p>
             <MapPin className="h-4 w-4 text-purple-500" />
           </div>
-          <div className="text-2xl font-bold text-purple-600">{stateStats.totalCourts}</div>
+          <div className="text-2xl font-bold text-purple-600">{safeDisplayValue(stateStats.totalCourts)}</div>
           <p className="text-xs text-gray-600">available courts</p>
         </div>
 
@@ -106,7 +114,7 @@ const Overview: React.FC<OverviewProps> = ({ stateStats, recentMembers, recentAn
             <DollarSign className="h-4 w-4 text-green-500" />
           </div>
           <div className="text-2xl font-bold text-green-600">
-            ${stateStats.monthlyRevenue.toLocaleString()}
+            ${safeDisplayValue(stateStats.monthlyRevenue)}
           </div>
           <p className="text-xs text-gray-600">this month</p>
         </div>
@@ -245,21 +253,21 @@ const Overview: React.FC<OverviewProps> = ({ stateStats, recentMembers, recentAn
           
           <div className="text-center">
             <div className="text-2xl font-bold text-green-600 mb-1">
-              ${(stateStats.monthlyRevenue / stateStats.totalMembers).toFixed(0)}
+              ${safeDisplayValue((stateStats.monthlyRevenue / stateStats.totalMembers), '0')}
             </div>
             <p className="text-sm text-gray-600">Revenue per Member</p>
           </div>
           
           <div className="text-center">
             <div className="text-2xl font-bold text-purple-600 mb-1">
-              {stateStats.totalCourts / stateStats.totalClubs}
+              {safeDisplayValue(stateStats.totalCourts / stateStats.totalClubs, '0')}
             </div>
             <p className="text-sm text-gray-600">Avg Courts per Club</p>
           </div>
           
           <div className="text-center">
             <div className="text-2xl font-bold text-orange-600 mb-1">
-              {stateStats.pendingApplications}
+              {safeDisplayValue(stateStats.pendingApplications)}
             </div>
             <p className="text-sm text-gray-600">Pending Applications</p>
           </div>

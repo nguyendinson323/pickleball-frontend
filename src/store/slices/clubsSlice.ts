@@ -103,7 +103,7 @@ const clubsSlice = createSlice({
       .addCase(fetchClubs.fulfilled, (state, action) => {
         state.loading = false;
         const payload = action.payload as any;
-        state.clubs = payload?.data || [];
+        state.clubs = payload?.data?.data || [];  // Fix: access nested data.data
         state.pagination = payload?.pagination || null;
       })
       .addCase(fetchClubs.rejected, (state, action) => {

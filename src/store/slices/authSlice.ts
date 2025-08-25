@@ -5,39 +5,55 @@ import { LoginRequest, RegisterRequest, ProfileResponse, LoginResponse, Register
 // Action creators that manage pending state
 export const loginUser = createAsyncThunk(
   'auth/loginUser',
-  async (credentials: LoginRequest) => {
-    const response = await api.post<LoginResponse>('/auth/login', credentials);
-    return response;
+  async (credentials: LoginRequest, { rejectWithValue }) => {
+    try {
+      const response = await api.post<LoginResponse>('/auth/login', credentials);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Login failed');
+    }
   }
 );
 
 export const registerUser = createAsyncThunk(
   'auth/registerUser',
-  async (userData: RegisterRequest | FormData) => {
-    const response = await api.post<RegisterResponse>('/auth/register', userData);
-    return response;
+  async (userData: RegisterRequest | FormData, { rejectWithValue }) => {
+    try {
+      const response = await api.post<RegisterResponse>('/auth/register', userData);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Registration failed');
+    }
   }
 );
 
 export const getProfile = createAsyncThunk(
   'auth/getProfile',
-  async () => {
-    const response = await api.get<ProfileResponse>('/auth/profile');
-    return response;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get<ProfileResponse>('/auth/profile');
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to get profile');
+    }
   }
 );
 
 export const refreshUserData = createAsyncThunk(
   'auth/refreshUserData',
-  async () => {
-    const response = await api.get<ProfileResponse>('/auth/profile');
-    return response;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get<ProfileResponse>('/auth/profile');
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to refresh user data');
+    }
   }
 );
 
 export const restoreAuthState = createAsyncThunk(
   'auth/restoreAuthState',
-  async () => {
+  async (_, { rejectWithValue }) => {
     const token = localStorage.getItem('token');
     const refreshToken = localStorage.getItem('refresh_token');
     
@@ -45,14 +61,14 @@ export const restoreAuthState = createAsyncThunk(
       try {
         const response = await api.get<ProfileResponse>('/auth/profile');
         return response;
-      } catch (error) {
+      } catch (error: any) {
         // Token is invalid, clear it
         localStorage.removeItem('token');
         localStorage.removeItem('refresh_token');
-        throw error;
+        return rejectWithValue(error.response?.data?.message || error.message || 'Authentication failed');
       }
     } else {
-      throw new Error('No authentication tokens found');
+      return rejectWithValue('No authentication tokens found');
     }
   }
 );
@@ -102,6 +118,14 @@ const authSlice = createSlice({
         state.loading = false;
         const payload = action.payload;
         
+        // Check if payload is an error object (shouldn't happen with proper error handling, but safety check)
+        if (payload && typeof payload === 'object' && 'message' in payload && 'name' in payload && payload.name === 'AxiosError') {
+          console.error('Received error object in fulfilled case:', payload);
+          state.error = payload.message || 'Login failed';
+          state.isAuthenticated = false;
+          return;
+        }
+        
         // Backend sends: { success: true, message: "...", data: { user: {...}, tokens: { accessToken, refreshToken } } }
         if (payload?.data?.user && payload?.data?.tokens) {
           state.user = payload.data.user;
@@ -123,11 +147,12 @@ const authSlice = createSlice({
         } else {
           console.error('Invalid login response structure:', payload);
           state.error = 'Invalid response from server';
+          state.isAuthenticated = false;
         }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error?.message || 'Login failed';
+        state.error = action.payload as string || 'Login failed';
         state.isAuthenticated = false;
       })
       // Register
@@ -138,6 +163,14 @@ const authSlice = createSlice({
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
         const payload = action.payload;
+        
+        // Check if payload is an error object (shouldn't happen with proper error handling, but safety check)
+        if (payload && typeof payload === 'object' && 'message' in payload && 'name' in payload && payload.name === 'AxiosError') {
+          console.error('Received error object in fulfilled case:', payload);
+          state.error = payload.message || 'Registration failed';
+          state.isAuthenticated = false;
+          return;
+        }
         
         // Backend sends: { success: true, message: "...", data: { user: {...}, tokens: { accessToken, refreshToken } } }
         if (payload?.data?.user && payload?.data?.tokens) {
@@ -160,11 +193,12 @@ const authSlice = createSlice({
         } else {
           console.error('Invalid register response structure:', payload);
           state.error = 'Invalid response from server';
+          state.isAuthenticated = false;
         }
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error?.message || 'Registration failed';
+        state.error = action.payload as string || 'Registration failed';
         state.isAuthenticated = false;
       })
       // Get Profile
@@ -188,7 +222,7 @@ const authSlice = createSlice({
       })
       .addCase(getProfile.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error?.message || 'Failed to get profile';
+        state.error = action.payload as string || 'Failed to get profile';
         state.isAuthenticated = false;
       })
       // Restore Auth State
@@ -199,10 +233,10 @@ const authSlice = createSlice({
       .addCase(restoreAuthState.fulfilled, (state, action) => {
         state.loading = false;
         const payload = action.payload;
-        
         if (payload?.data) {
           state.user = payload.data;
           state.isAuthenticated = true;
+          
           console.log('Auth state restored successfully:', {
             user: payload.data,
             profilePhoto: payload.data.profile_photo,
@@ -212,7 +246,7 @@ const authSlice = createSlice({
       })
       .addCase(restoreAuthState.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error?.message || 'Failed to restore authentication';
+        state.error = action.payload as string || 'Failed to restore auth state';
         state.isAuthenticated = false;
       })
       // Refresh User Data
@@ -223,10 +257,10 @@ const authSlice = createSlice({
       .addCase(refreshUserData.fulfilled, (state, action) => {
         state.loading = false;
         const payload = action.payload;
-        
         if (payload?.data) {
           state.user = payload.data;
           state.isAuthenticated = true;
+          
           console.log('User data refreshed successfully:', {
             user: payload.data,
             profilePhoto: payload.data.profile_photo,
@@ -236,7 +270,8 @@ const authSlice = createSlice({
       })
       .addCase(refreshUserData.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error?.message || 'Failed to refresh user data';
+        state.error = action.payload as string || 'Failed to refresh user data';
+        state.isAuthenticated = false;
       });
   },
 });

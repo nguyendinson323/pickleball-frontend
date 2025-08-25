@@ -47,15 +47,28 @@ const StateDashboard = () => {
   const statsLoading = useSelector((state: RootState) => state.stats.loading);
   const statsError = useSelector((state: RootState) => state.stats.error);
 
+  // Helper function to safely parse IDs
+  const safeParseId = (id: string): number => {
+    const parsed = parseInt(id);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  // Helper function to ensure numeric values are valid
+  const ensureValidNumber = (value: any, fallback: number = 0): number => {
+    if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+      return value;
+    }
+    return fallback;
+  };
+
   // Fetch data when component mounts and when specific tabs are activated
   useEffect(() => {
     // Always fetch overview stats and user stats
     dispatch(fetchOverviewStats());
     dispatch(fetchUserStats());
     
-    // Fetch users for member data
-    dispatch(fetchUsers({ 
-      user_type: 'player', 
+    // Fetch players for member data (using public endpoint)
+    dispatch(fetchPlayers({ 
       limit: 100,
       page: 1 
     }));
@@ -86,28 +99,25 @@ const StateDashboard = () => {
 
   // Calculate derived statistics from real data with validation
   const stateStats = {
-    totalMembers: userStats?.total_users || 0,
-    activeMembers: userStats?.active_users || 0,
-    totalClubs: overviewStats?.total_clubs || 0,
-    totalCourts: clubs.reduce((total, club) => total + (club.court_count || 0), 0),
-    totalTournaments: overviewStats?.total_tournaments || 0,
-    monthlyRevenue: overviewStats?.total_revenue || 0,
-    pendingApplications: users.filter(user => user.membership_status === 'pending').length,
-    upcomingEvents: tournaments.filter(t => 
+    totalMembers: ensureValidNumber(userStats?.total_users, 0),
+    activeMembers: ensureValidNumber(userStats?.active_users, 0),
+    totalClubs: ensureValidNumber(overviewStats?.total_clubs, 0),
+    totalCourts: (clubs || []).reduce((total, club) => {
+      const courtCount = club.court_count;
+      return total + (typeof courtCount === 'number' && !isNaN(courtCount) ? courtCount : 0);
+    }, 0),
+    totalTournaments: ensureValidNumber(overviewStats?.total_tournaments, 0),
+    monthlyRevenue: ensureValidNumber(overviewStats?.total_revenue, 0),
+    pendingApplications: (users || []).filter(user => user.membership_status === 'free').length,
+    upcomingEvents: (tournaments || []).filter(t => 
       t.status === 'registration_open' || t.status === 'published'
     ).length
-  };
-
-  // Helper function to safely parse IDs
-  const safeParseId = (id: string): number => {
-    const parsed = parseInt(id);
-    return isNaN(parsed) ? 0 : parsed;
   };
 
   // Validate and transform data with error handling
   const getValidTournaments = () => {
     try {
-      return tournaments.filter(t => t && t.id && t.name);
+      return (tournaments || []).filter(t => t && t.id && t.name);
     } catch (error) {
       console.error('Error filtering tournaments:', error);
       return [];
@@ -116,7 +126,7 @@ const StateDashboard = () => {
 
   const getValidClubs = () => {
     try {
-      return clubs.filter(c => c && c.id && c.name);
+      return (clubs || []).filter(c => c && c.id && c.name);
     } catch (error) {
       console.error('Error filtering clubs:', error);
       return [];
@@ -125,7 +135,7 @@ const StateDashboard = () => {
 
   const getValidUsers = () => {
     try {
-      return users.filter(u => u && u.id);
+      return (users || []).filter(u => u && u.id);
     } catch (error) {
       console.error('Error filtering users:', error);
       return [];
@@ -150,34 +160,35 @@ const StateDashboard = () => {
   const transformedClubAffiliations = getValidClubs().map(club => ({
     id: safeParseId(club.id),
     name: club.name || 'Unnamed Club',
-    city: club.city || 'City TBD',
+    city: club.city || 'Unknown City',
     members: club.member_count || 0,
-    status: club.membership_status || 'pending',
-    complianceScore: club.membership_status === 'active' ? 95 : 
-                    club.membership_status === 'suspended' ? 60 : 75,
-    lastInspection: club.updated_at || new Date().toISOString().split('T')[0],
+    status: club.membership_status === 'active' ? 'Active' : 
+            club.membership_status === 'pending' ? 'Pending Review' : 'Suspended',
+    complianceScore: club.membership_status === 'active' ? 95 :
+                    club.membership_status === 'pending' ? 60 : 30,
+    lastInspection: club.updated_at ? new Date(club.updated_at).toLocaleDateString() : 'Never',
     nextInspection: club.updated_at ? 
-      new Date(new Date(club.updated_at).getTime() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] :
-      new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    issues: club.membership_status === 'active' ? 0 : 
-            club.membership_status === 'suspended' ? 3 : 1
+      new Date(new Date(club.updated_at).getTime() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString() :
+      new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+    issues: club.membership_status === 'active' ? 0 :
+            club.membership_status === 'pending' ? 2 : 5
   }));
 
-  // Transform users data for verifications with validation
-  const transformedMemberVerifications = getValidUsers()
-    .filter(user => user.verification_documents)
-    .slice(0, 10)
-    .map(user => ({
-      id: safeParseId(user.id),
-      name: user.full_name || user.username || 'Unknown User',
-      type: user.user_type || 'player',
-      club: user.club?.name || 'Independent',
-      submitted: user.created_at || new Date().toISOString().split('T')[0],
-      status: user.is_verified ? 'Verified' : 'Pending',
-      documents: user.verification_documents ? ['ID Card', 'Verification'] : ['ID Card'],
-      verifiedBy: user.is_verified ? 'System' : null,
-      verifiedDate: user.is_verified ? user.updated_at : null
-    }));
+  // Transform member verification data for the component with validation
+  const transformedMemberVerifications = getValidUsers().map(user => ({
+    id: safeParseId(user.id),
+    name: user.full_name || user.username || 'Unknown User',
+    type: user.user_type === 'player' ? 'Player' : 
+          user.user_type === 'coach' ? 'Coach' : 
+          user.user_type === 'club' ? 'Club Manager' : 'Tournament Director',
+    club: user.club?.name || 'Independent',
+    submitted: user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Never',
+    status: user.membership_status === 'basic' || user.membership_status === 'premium' ? 'Verified' : 'Pending',
+    documents: user.verification_documents ? ['ID Card', 'Verification'] : ['ID Card'],
+    verifiedBy: user.membership_status === 'basic' || user.membership_status === 'premium' ? 'System' : null,
+    verifiedDate: user.membership_status === 'basic' || user.membership_status === 'premium' ? 
+      (user.updated_at ? new Date(user.updated_at).toLocaleDateString() : 'Never') : null
+  }));
 
   // Transform recent members data with validation
   const recentMembers = getValidUsers()
@@ -215,20 +226,25 @@ const StateDashboard = () => {
 
   // Analytics data derived from real data
   const analyticsData = {
-    memberGrowth: userStats ? ((userStats.total_users - (userStats.total_users * 0.9)) / (userStats.total_users * 0.9)) * 100 : 0,
-    revenueGrowth: overviewStats ? ((overviewStats.total_revenue - (overviewStats.total_revenue * 0.9)) / (overviewStats.total_revenue * 0.9)) * 100 : 0,
-    tournamentParticipation: tournaments.length > 0 ? 
-      (tournaments.reduce((total, t) => total + t.current_participants, 0) / 
-       tournaments.reduce((total, t) => total + (t.max_participants || 0), 0)) * 100 : 0,
-    clubCompliance: clubs.length > 0 ? 
-      (clubs.filter(c => c.membership_status === 'active').length / clubs.length) * 100 : 0,
+    memberGrowth: ensureValidNumber(userStats && userStats.total_users > 0 ? ((userStats.total_users - (userStats.total_users * 0.9)) / (userStats.total_users * 0.9)) * 100 : 0, 0),
+    revenueGrowth: ensureValidNumber(overviewStats && overviewStats.total_revenue > 0 ? ((overviewStats.total_revenue - (overviewStats.total_revenue * 0.9)) / (overviewStats.total_revenue * 0.9)) * 100 : 0, 0),
+    tournamentParticipation: ensureValidNumber((() => {
+      const totalParticipants = (tournaments || []).reduce((total, t) => total + (t.current_participants || 0), 0);
+      const totalMaxParticipants = (tournaments || []).reduce((total, t) => total + (t.max_participants || 0), 0);
+      return totalMaxParticipants > 0 ? (totalParticipants / totalMaxParticipants) * 100 : 0;
+    })(), 0),
+    clubCompliance: ensureValidNumber((() => {
+      const activeClubs = (clubs || []).filter(c => c.membership_status === 'active').length;
+      const totalClubs = (clubs || []).length;
+      return totalClubs > 0 ? (activeClubs / totalClubs) * 100 : 0;
+    })(), 0),
     monthlyTrends: [45, 52, 48, 67, 73, 89, 95, 87, 92, 98, 105, 112] // Placeholder - would need time-series API
   };
 
   // Communications data derived from real data
   const communicationsData = {
     totalAnnouncements: recentAnnouncements.length,
-    scheduledMessages: tournaments.filter(t => t.status === 'published').length,
+    scheduledMessages: (tournaments || []).filter(t => t.status === 'published').length,
     memberEngagement: 78.5, // Placeholder - would need engagement API
     responseRate: 92.3, // Placeholder - would need response API
     recentMessages: recentAnnouncements.map(announcement => ({
@@ -282,7 +298,11 @@ const StateDashboard = () => {
     tournamentGrowth: {
       thisYear: overviewStats?.total_tournaments || 0,
       lastYear: Math.floor((overviewStats?.total_tournaments || 0) * 0.8),
-      growth: ((overviewStats?.total_tournaments || 0) - Math.floor((overviewStats?.total_tournaments || 0) * 0.8)) / Math.floor((overviewStats?.total_tournaments || 0) * 0.8) * 100
+      growth: ensureValidNumber((() => {
+        const thisYear = overviewStats?.total_tournaments || 0;
+        const lastYear = Math.floor(thisYear * 0.8);
+        return lastYear > 0 ? ((thisYear - lastYear) / lastYear) * 100 : 0;
+      })(), 0)
     },
     monthlyTrends: [
       { month: 'Jan', members: Math.floor((userStats?.total_users || 0) * 0.95), revenue: Math.floor((overviewStats?.total_revenue || 0) * 0.1) },
@@ -296,7 +316,7 @@ const StateDashboard = () => {
   const isLoading = statsLoading || (activeTab === 'tournaments' && tournamentsLoading) || 
                    (activeTab === 'clubs' && clubsLoading) || 
                    (activeTab === 'overview' && usersLoading);
-
+ 
   // Error states
   const hasError = statsError || tournamentsError || clubsError || usersError;
 
@@ -304,8 +324,7 @@ const StateDashboard = () => {
   const handleRefresh = () => {
     dispatch(fetchOverviewStats());
     dispatch(fetchUserStats());
-    dispatch(fetchUsers({ 
-      user_type: 'player', 
+    dispatch(fetchPlayers({ 
       limit: 100,
       page: 1 
     }));

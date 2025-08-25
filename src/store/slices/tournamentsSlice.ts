@@ -100,7 +100,7 @@ const tournamentsSlice = createSlice({
       .addCase(fetchTournaments.fulfilled, (state, action) => {
         state.loading = false;
         const payload = action.payload as any;
-        state.tournaments = payload?.data || [];
+        state.tournaments = payload?.data?.data || [];  // Fix: access nested data.data
         state.pagination = payload?.pagination || null;
       })
       .addCase(fetchTournaments.rejected, (state, action) => {

@@ -46,7 +46,7 @@ export async function get<T>(url: string, config?: AxiosRequestConfig): Promise<
     .then((res: AxiosResponse<T>) => res.data)
     .catch((err) => {
       console.error(`GET ${url} failed`, err);
-      return err;
+      throw err;
     });
 }
 
@@ -59,7 +59,7 @@ export async function post<T, U = unknown>(url: string, data: U, config?: AxiosR
     .then((res: AxiosResponse<T>) => res.data)
     .catch((err) => {
       console.error(`POST ${url} failed`, err);
-      return err
+      throw err;
     });
 }
 
@@ -72,7 +72,7 @@ export async function put<T, U = unknown>(url: string, data: U, config?: AxiosRe
     .then((res: AxiosResponse<T>) => res.data)
     .catch((err) => {
       console.error(`PUT ${url} failed`, err);
-      return err;
+      throw err;
     });
 }
 
@@ -85,7 +85,7 @@ export async function del<T>(url: string, config?: AxiosRequestConfig): Promise<
     .then((res: AxiosResponse<T>) => res.data)
     .catch((err) => {
       console.error(`DELETE ${url} failed`, err);
-      return err;
+      throw err;
     });
 }
 

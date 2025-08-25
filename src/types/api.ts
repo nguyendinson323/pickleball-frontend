@@ -51,7 +51,7 @@ export interface User {
   social_media?: object;
   profile_photo?: string;
   logo?: string;
-  membership_status: 'active' | 'expired' | 'suspended' | 'cancelled' | 'pending';
+  membership_status: 'free' | 'basic' | 'premium' | 'expired';
   membership_expires_at?: string;
   subscription_plan: 'basic' | 'premium' | 'federation';
   email_verified: boolean;
